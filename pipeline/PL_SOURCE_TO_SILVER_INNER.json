@@ -227,7 +227,7 @@
 						{
 							"type": "Query",
 							"text": {
-								"value": "activity('Bronze to Silver').outputUPDATE ctrl.audit_log\nSET status = 'SUCCESS', end_time =SYSUTCDATETIME(),\nrecords_written ='@{activity('Bronze to Silver').output.runOutput}'\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}}'\nand table_id = '@{pipeline().parameters.table_id}'\n\n\n",
+								"value": "UPDATE ctrl.audit_log\nSET status = 'SUCCESS', end_time =SYSUTCDATETIME(),\nrecords_written =@{activity('Bronze to Silver').output.runOutput}\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}}'\nand table_id = '@{pipeline().parameters.table_id}'\n\n\n",
 								"type": "Expression"
 							}
 						}
