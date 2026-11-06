@@ -99,7 +99,7 @@
 									{
 										"type": "Query",
 										"text": {
-											"value": "INSERT INTO ctrl.audit_log(\nadf_run_id,table_id,stage,status,start_time)\nVALUES ('a1',@{item().table_id},'SOURCE_TO_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
+											"value": "INSERT INTO ctrl.audit_log(\nadf_run_id,table_id,stage,status,start_time)\nVALUES ('@{pipeline().parameters.adf_run_id}',@{item().table_id},'SOURCE_TO_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
 											"type": "Expression"
 										}
 									}
@@ -108,7 +108,7 @@
 							}
 						},
 						{
-							"name": "update failed status",
+							"name": "update failed status_copy1",
 							"type": "Script",
 							"dependsOn": [
 								{
@@ -135,7 +135,7 @@
 									{
 										"type": "Query",
 										"text": {
-											"value": "INSERT INTO ctrl.audit_log(\nadf_run_id,table_id,stage,status,start_time)\nVALUES ('a1',@{item().table_id},'SOURCE_TO_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
+											"value": "UPDATE ctrl.audit_log\nSET status = 'FAILED' and end_time =SYSUTCDATETIME()\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}'\nand table_id = '@{item().table_id}'\n\n",
 											"type": "Expression"
 										}
 									}
