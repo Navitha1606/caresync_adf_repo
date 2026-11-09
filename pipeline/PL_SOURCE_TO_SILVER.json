@@ -70,7 +70,7 @@
 					"source": {
 						"type": "PostgreSqlV2Source",
 						"query": {
-							"value": "select * from PUBLIC.@{activity('Read Table Details').output.firstRow.source_table_name}",
+							"value": "select * from PUBLIC.@{activity('Read Table Details').output.firstRow.source_table_name}\n@{\n    if(equals(activity('Read Table Details').output.firstRow.load_type,'FULL'), \n    '',\n    concat(\n        'where', activity('Read Table Details').output.firstRow.watermark_column,' >','''',variables('waremark_value'),''''\n\n    )\n\n    )\n}",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00"
@@ -190,7 +190,7 @@
 							"type": "Expression"
 						},
 						"merge_keys": {
-							"value": "@activity('Read Table Details').output.firstRow.merge_keys",
+							"value": "@coalesce(activity('Read Table Details').output.firstRow.merge_keys,'')",
 							"type": "Expression"
 						}
 					}
@@ -310,6 +310,56 @@
 									"value": "@activity('Read Table Details').output.firstRow.watermark_value",
 									"type": "Expression"
 								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "checking load type update watermark",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Bronze to Silver",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('Read Table Details').output.firstRow.load_type,'FULL' ))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "update water mark value",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "LS_AzureSqlDatabase1",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "UPDATE ctrl.watermark\nSET waremark_value = SYSUTCDATETIME()\nWHERE table_id = @{pipeline().parameters.table_id}",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
 							}
 						}
 					]
