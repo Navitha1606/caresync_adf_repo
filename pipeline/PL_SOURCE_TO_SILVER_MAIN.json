@@ -99,7 +99,7 @@
 									{
 										"type": "Query",
 										"text": {
-											"value": "INSERT INTO  ctrl.audit_log (adf_run_id,table_id,stage,status,start_time)\nVALUES('a1',@{item().table_id},'SOURCE_TOE_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
+											"value": "INSERT INTO  ctrl.audit_log (adf_run_id,table_id,stage,status,start_time)\nVALUES('@{pipeline().parameters.adf_run_id}',@{item().table_id},'SOURCE_TOE_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
 											"type": "Expression"
 										}
 									}
@@ -135,7 +135,7 @@
 									{
 										"type": "Query",
 										"text": {
-											"value": "UPDATE ctrl.audit_log \nSET status = 'FAIL',end_time=SYSUTCDATETIME()\nWHERE adf_run_id = and table_id=@{item().table_id}\n\n",
+											"value": "UPDATE ctrl.audit_log \nSET status = 'FAIL',end_time=SYSUTCDATETIME()\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}' and table_id=@{item().table_id} and \nsource_system = '@{pipeline().parameters.source_system}'\n\n",
 											"type": "Expression"
 										}
 									}
@@ -151,6 +151,10 @@
 			"source_system": {
 				"type": "string",
 				"defaultValue": "neon_postgres"
+			},
+			"adf_run_id": {
+				"type": "string",
+				"defaultValue": "a2"
 			}
 		},
 		"variables": {
