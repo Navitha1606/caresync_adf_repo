@@ -307,7 +307,7 @@
 							"typeProperties": {
 								"variableName": "waremark_value",
 								"value": {
-									"value": "@activity('Read Table Details').output.firstRow.watermark_value",
+									"value": "@activity('Read Table Details').output.firstRow.watermark_value\n\n",
 									"type": "Expression"
 								}
 							}
@@ -339,7 +339,7 @@
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
-								"retry": 0,
+								"retry": 2,
 								"retryIntervalInSeconds": 30,
 								"secureOutput": false,
 								"secureInput": false
@@ -354,7 +354,7 @@
 									{
 										"type": "Query",
 										"text": {
-											"value": "UPDATE ctrl.watermark\nSET waremark_value = SYSUTCDATETIME()\nWHERE table_id = @{pipeline().parameters.table_id}",
+											"value": "UPDATE ctrl.watermark\nSET watermark_value = SYSUTCDATETIME()\nWHERE table_id = @{pipeline().parameters.table_id}",
 											"type": "Expression"
 										}
 									}
