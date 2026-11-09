@@ -230,7 +230,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/PL_SOURCE_TO_SILVER_INNER')]",
+			"name": "[concat(parameters('factoryName'), '/PL_SOURCE_TO_SILVER')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -251,7 +251,7 @@
 							"source": {
 								"type": "AzureSqlSource",
 								"sqlReaderQuery": {
-									"value": "select * from ctrl.table_config where table_id=@{pipeline().parameters.table_id} ",
+									"value": "select * from ctrl.table_config where table_id =@{pipeline().parameters.table_id} and is_active = 1",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00",
@@ -261,8 +261,7 @@
 								"referenceName": "AzureSqlTable1",
 								"type": "DatasetReference",
 								"parameters": {}
-							},
-							"firstRowOnly": true
+							}
 						}
 					},
 					{
@@ -275,7 +274,7 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"variableName": "start_time",
+							"variableName": "Start Time",
 							"value": {
 								"value": "@formatDateTime(utcNow(),'yyyy-MM-dd_hh:mm:ss')",
 								"type": "Expression"
@@ -287,7 +286,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "check load type",
+								"activity": "Check LoadType",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -295,7 +294,7 @@
 						],
 						"policy": {
 							"timeout": "0.12:00:00",
-							"retry": 2,
+							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
 							"secureInput": false
@@ -305,7 +304,7 @@
 							"source": {
 								"type": "PostgreSqlV2Source",
 								"query": {
-									"value": "select * from PUBLIC.@{activity('Read Table Details').output.firstRow.source_table_name}\n@{\n    if(equals(activity('Read Table Details').output.firstRow.load_type,'FULL'),\n    '',\n    concat('where updated_at > ','''',variables('watermark_value'),'''')\n    \n    )\n\n}",
+									"value": "select * from PUBLIC.@{activity('Read Table Details').output.firstRow.source_table_name}\n@{\n    if(equals(activity('Read Table Details').output.firstRow.load_type,'FULL'), \n        '',\n        concat(\n            'where ',activity('Read Table Details').output.firstRow.watermark_column , ' > ', '''',variables('waremark_value'),''''\n\n    )\n\n    )\n}",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00"
@@ -343,7 +342,7 @@
 								"parameters": {
 									"container": "landing",
 									"folder": {
-										"value": "@concat(\n    activity('Read Table Details').output.firstRow.source_system,\n    '/',\n    activity('Read Table Details').output.firstRow.source_table_name,\n    '/',\n    variables('start_time')\n)",
+										"value": "@concat(\n    activity('Read Table Details').output.firstRow.source_system,\n    '/',\n    activity('Read Table Details').output.firstRow.source_table_name,\n    '/',\n    variables('Start Time')\n)",
 										"type": "Expression"
 									}
 								}
@@ -381,7 +380,7 @@
 									"type": "Expression"
 								},
 								"landing_timestamp": {
-									"value": "@variables('start_time')",
+									"value": "@variables('Start Time')",
 									"type": "Expression"
 								}
 							}
@@ -413,20 +412,20 @@
 						"typeProperties": {
 							"notebookPath": "/caresync-repo1/caresync_adb_repo/Bronze_to_Silver",
 							"baseParameters": {
+								"load_type": {
+									"value": "@activity('Read Table Details').output.firstRow.load_type",
+									"type": "Expression"
+								},
 								"table_name": {
 									"value": "@activity('Read Table Details').output.firstRow.silver_table_name",
 									"type": "Expression"
 								},
 								"landing_timestamp": {
-									"value": "@variables('start_time')",
+									"value": "@variables('Start Time')",
 									"type": "Expression"
 								},
 								"merge_keys": {
 									"value": "@coalesce(activity('Read Table Details').output.firstRow.merge_keys,'')",
-									"type": "Expression"
-								},
-								"load_type": {
-									"value": "@activity('Read Table Details').output.firstRow.load_type",
 									"type": "Expression"
 								}
 							}
@@ -437,7 +436,7 @@
 						}
 					},
 					{
-						"name": "update sucess status",
+						"name": "Update Success Status",
 						"type": "Script",
 						"dependsOn": [
 							{
@@ -464,7 +463,7 @@
 								{
 									"type": "Query",
 									"text": {
-										"value": "UPDATE ctrl.audit_log\nSET status = 'SUCCESS', end_time =SYSUTCDATETIME(),\nrecords_written =@{activity('Bronze to Silver').output.runOutput}\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}}'\nand table_id = '@{pipeline().parameters.table_id}'\n\n\n",
+										"value": "UPDATE ctrl.audit_log \nSET status = 'SUCCESS',end_time=SYSUTCDATETIME(),\nrecords_written=@{activity('Bronze to Silver').output.runOutput}\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}' and table_id=@{pipeline().parameters.table_id} \n\n\n",
 										"type": "Expression"
 									}
 								}
@@ -473,17 +472,17 @@
 						}
 					},
 					{
-						"name": "check load type",
+						"name": "Check LoadType",
 						"type": "IfCondition",
 						"dependsOn": [
 							{
-								"activity": "Read Table Details",
+								"activity": "Set Start Time",
 								"dependencyConditions": [
 									"Succeeded"
 								]
 							},
 							{
-								"activity": "Set Start Time",
+								"activity": "Read Table Details",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -492,12 +491,12 @@
 						"userProperties": [],
 						"typeProperties": {
 							"expression": {
-								"value": "@not(equals(activity('Read Table Details').output.firstRow.load_type,'FULL'))",
+								"value": "@not(equals(activity('Read Table Details').output.firstRow.load_type,'FULL' ))",
 								"type": "Expression"
 							},
 							"ifTrueActivities": [
 								{
-									"name": "Read Watermark",
+									"name": "Read Water Mark",
 									"type": "Lookup",
 									"dependsOn": [],
 									"policy": {
@@ -512,7 +511,7 @@
 										"source": {
 											"type": "AzureSqlSource",
 											"sqlReaderQuery": {
-												"value": "select watermark_value from ctrl.watermark where \ntable_id=@{pipeline().parameters.table_id}",
+												"value": "select watermark_value from ctrl.watermark where table_id =@{pipeline().parameters.table_id}",
 												"type": "Expression"
 											},
 											"queryTimeout": "02:00:00",
@@ -526,11 +525,11 @@
 									}
 								},
 								{
-									"name": "store watermark value",
+									"name": "Store WaterMark value",
 									"type": "SetVariable",
 									"dependsOn": [
 										{
-											"activity": "Read Watermark",
+											"activity": "Read Water Mark",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -542,9 +541,9 @@
 									},
 									"userProperties": [],
 									"typeProperties": {
-										"variableName": "watermark_value",
+										"variableName": "waremark_value",
 										"value": {
-											"value": "@activity('Read Watermark').output.firstRow.watermark_value",
+											"value": "@activity('Read Water Mark').output.firstRow.watermark_value",
 											"type": "Expression"
 										}
 									}
@@ -553,7 +552,7 @@
 						}
 					},
 					{
-						"name": "checking load type and update watermark",
+						"name": "checking load type update watermark",
 						"type": "IfCondition",
 						"dependsOn": [
 							{
@@ -566,17 +565,17 @@
 						"userProperties": [],
 						"typeProperties": {
 							"expression": {
-								"value": "@not(equals(activity('Read Table Details').output.firstRow.load_type,'FULL') )",
+								"value": "@not(equals(activity('Read Table Details').output.firstRow.load_type,'FULL' ))",
 								"type": "Expression"
 							},
 							"ifTrueActivities": [
 								{
-									"name": "Update watermark",
+									"name": "update water mark value",
 									"type": "Script",
 									"dependsOn": [],
 									"policy": {
 										"timeout": "0.12:00:00",
-										"retry": 0,
+										"retry": 2,
 										"retryIntervalInSeconds": 30,
 										"secureOutput": false,
 										"secureInput": false
@@ -591,7 +590,7 @@
 											{
 												"type": "Query",
 												"text": {
-													"value": "update ctrl.watermark set watermark_value =SYSUTCDATETIME()\nwhere table_id=@{pipeline().parameters.table_id}",
+													"value": "UPDATE ctrl.watermark\nSET watermark_value = SYSUTCDATETIME()\nWHERE table_id = @{pipeline().parameters.table_id}",
 													"type": "Expression"
 												}
 											}
@@ -617,10 +616,10 @@
 					}
 				},
 				"variables": {
-					"start_time": {
+					"Start Time": {
 						"type": "String"
 					},
-					"watermark_value": {
+					"waremark_value": {
 						"type": "String"
 					}
 				},
@@ -713,7 +712,7 @@
 			"properties": {
 				"activities": [
 					{
-						"name": "Read Source Table list",
+						"name": "Read Source Tables List",
 						"type": "Lookup",
 						"dependsOn": [],
 						"policy": {
@@ -728,7 +727,7 @@
 							"source": {
 								"type": "AzureSqlSource",
 								"sqlReaderQuery": {
-									"value": "select table_id from ctrl.table_config where is_active=1\nand source_system ='@{pipeline().parameters.source_system}'",
+									"value": "select table_id from ctrl.table_config where is_active = 1 \nand source_system ='@{pipeline().parameters.source_system}'",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00",
@@ -747,7 +746,7 @@
 						"type": "ForEach",
 						"dependsOn": [
 							{
-								"activity": "Read Source Table list",
+								"activity": "Read Source Tables List",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -756,17 +755,17 @@
 						"userProperties": [],
 						"typeProperties": {
 							"items": {
-								"value": "@activity('Read Source Table list').output.value",
+								"value": "@activity('Read Source Tables List').output.value",
 								"type": "Expression"
 							},
 							"isSequential": false,
 							"activities": [
 								{
-									"name": "Ingest from source to silver",
+									"name": "Ingest from Source to Silver",
 									"type": "ExecutePipeline",
 									"dependsOn": [
 										{
-											"activity": "Insert in progress",
+											"activity": "In Progress",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -778,7 +777,7 @@
 									"userProperties": [],
 									"typeProperties": {
 										"pipeline": {
-											"referenceName": "PL_SOURCE_TO_SILVER_INNER",
+											"referenceName": "PL_SOURCE_TO_SILVER",
 											"type": "PipelineReference"
 										},
 										"waitOnCompletion": true,
@@ -786,12 +785,16 @@
 											"table_id": {
 												"value": "@item().table_id",
 												"type": "Expression"
+											},
+											"adf_run_id": {
+												"value": "@pipeline().parameters.adf_run_id",
+												"type": "Expression"
 											}
 										}
 									}
 								},
 								{
-									"name": "Insert in progress",
+									"name": "In Progress",
 									"type": "Script",
 									"dependsOn": [],
 									"policy": {
@@ -811,7 +814,7 @@
 											{
 												"type": "Query",
 												"text": {
-													"value": "INSERT INTO ctrl.audit_log(\nadf_run_id,table_id,stage,status,start_time)\nVALUES ('@{pipeline().parameters.adf_run_id}',@{item().table_id},'SOURCE_TO_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
+													"value": "INSERT INTO  ctrl.audit_log (adf_run_id,table_id,stage,status,start_time)\nVALUES('@{pipeline().parameters.adf_run_id}',@{item().table_id},'SOURCE_TO_SILVER','IN_PROGRESS',SYSUTCDATETIME())",
 													"type": "Expression"
 												}
 											}
@@ -820,11 +823,11 @@
 									}
 								},
 								{
-									"name": "update failed status_copy1",
+									"name": "Update Failed Status",
 									"type": "Script",
 									"dependsOn": [
 										{
-											"activity": "Ingest from source to silver",
+											"activity": "Ingest from Source to Silver",
 											"dependencyConditions": [
 												"Failed"
 											]
@@ -847,7 +850,7 @@
 											{
 												"type": "Query",
 												"text": {
-													"value": "UPDATE ctrl.audit_log\nSET status = 'FAILED',end_time =SYSUTCDATETIME()\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}'\nand table_id = '@{item().table_id}'\n\n",
+													"value": "UPDATE ctrl.audit_log \nSET status = 'FAILED',end_time=SYSUTCDATETIME()\nWHERE adf_run_id ='@{pipeline().parameters.adf_run_id}' and table_id=@{item().table_id} \n\n\n",
 													"type": "Expression"
 												}
 											}
@@ -869,7 +872,7 @@
 					},
 					"adf_run_id": {
 						"type": "string",
-						"defaultValue": "a10"
+						"defaultValue": "a2"
 					}
 				},
 				"variables": {
@@ -881,7 +884,7 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/AzureSqlTable1')]",
-				"[concat(variables('factoryId'), '/pipelines/PL_SOURCE_TO_SILVER_INNER')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_SOURCE_TO_SILVER')]",
 				"[concat(variables('factoryId'), '/linkedServices/LS_AzureSqlDatabase1')]"
 			]
 		}
