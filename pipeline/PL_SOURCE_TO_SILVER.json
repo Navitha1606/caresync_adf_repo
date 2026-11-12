@@ -401,21 +401,6 @@
 									},
 									"userProperties": [],
 									"typeProperties": {
-										"source": {
-											"type": "BinarySource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": false,
-												"modifiedDatetimeStart": {
-													"value": "@variables('waremark_value')",
-													"type": "Expression"
-												},
-												"deleteFilesAfterCompletion": false
-											},
-											"formatSettings": {
-												"type": "BinaryReadSettings"
-											}
-										},
 										"sink": {
 											"type": "BinarySink",
 											"storeSettings": {
@@ -424,19 +409,6 @@
 										},
 										"enableStaging": false
 									},
-									"inputs": [
-										{
-											"referenceName": "DS_CSV_Binary1",
-											"type": "DatasetReference",
-											"parameters": {
-												"folder": {
-													"value": "@activity('Read Table Details').output.firstRow.source_path",
-													"type": "Expression"
-												},
-												"container": "source"
-											}
-										}
-									],
 									"outputs": [
 										{
 											"referenceName": "DS_CSV_Binary",
