@@ -385,7 +385,7 @@
 							"value": "adls_csv",
 							"activities": [
 								{
-									"name": "Ingest csv from source to landing",
+									"name": "Ingest CSV from source to landing",
 									"type": "Copy",
 									"dependsOn": [],
 									"policy": {
